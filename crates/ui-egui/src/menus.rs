@@ -244,8 +244,8 @@ fn run_ui_command_inner(app: &mut CadApp, id: &str, params: &Value) -> Option<Re
             Ok(Value::Null)
         }
         "ui.fullscreen" => {
-            // Fullscreen is handled by the engine command, not here
-            app.run("fullscreen", params.clone())
+            // Delegate to the control channel which handles it platform-specifically
+            app.run("ui.fullscreen", params.clone())
         }
         "ui.toggle.menubar" => {
             toggle(&mut app.ui.in_window_menu, params);

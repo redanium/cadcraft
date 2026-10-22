@@ -354,6 +354,53 @@ pub fn handle(app: &mut CadApp, ctx: &egui::Context, req: &ControlRequest) -> Ou
             ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
             ok(Value::Null)
         }
+        "ui.fullscreen" => {
+            // Fullscreen is only available on web
+            #[cfg(target_arch = "wasm32")]
+            {
+                use wasm_bindgen::JsCast as _;
+                
+                let action = p.get("action").and_then(Value::as_str).unwrap_or("toggle");
+                
+                if let Some(window) = web_sys::window() {
+                    if let Some(document) = window.document() {
+                        if let Some(canvas) = document.get_element_by_id("cadcraft_canvas") {
+                            let canvas = canvas.dyn_into::<web_sys::HtmlCanvasElement>().ok();
+                            if let Some(canvas) = canvas {
+                                let result = match action {
+                                    "enter" | "toggle" => {
+                                        canvas.request_fullscreen()
+                                            .map(|_| true)
+                                    }
+                                    "exit" => {
+                                        document.exit_fullscreen();
+                                        Ok(false)
+                                    }
+                                    _ => Ok(false),
+                                };
+
+                                if let Ok(was_entered) = result {
+                                    return ok(json!({
+                                        "fullscreen": was_entered,
+                                        "message": if was_entered { "Entered fullscreen mode." } else { "Exited fullscreen mode." }
+                                    }));
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                return ok(json!({
+                    "fullscreen": false,
+                    "message": "Fullscreen is not available in this environment."
+                }));
+            }
+            
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                return err("Fullscreen is only available in the web version.");
+            }
+        }
         "ui.menu.list" => ok(Value::Array(
             crate::menus::tree(app).iter().map(|(m, es)| json!({"label": m, "children": es.iter().map(menu_json).collect::<Vec<_>>()})).collect(),
         )),

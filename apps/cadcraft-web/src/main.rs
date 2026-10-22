@@ -107,7 +107,7 @@ mod web {
             };
             
             // Set up fullscreen change event listener
-            let fullscreen_change = Closure::wrap(Box::new(move || {
+            let fullscreen_change = wasm_bindgen::closure::Closure::wrap(Box::new(move || {
                 // Fullscreen state changed - could log or handle if needed
                 log::debug!("Fullscreen state changed");
             }) as Box<dyn FnMut()>);
