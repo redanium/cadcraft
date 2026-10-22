@@ -105,6 +105,22 @@ mod web {
                 log::error!("missing <canvas id=\"{CANVAS_ID}\">");
                 return;
             };
+            
+            // Set up fullscreen change event listener
+            let fullscreen_change = Closure::wrap(Box::new(move || {
+                // Fullscreen state changed - could log or handle if needed
+                log::debug!("Fullscreen state changed");
+            }) as Box<dyn FnMut()>);
+            
+            if let Err(e) = canvas.add_event_listener_with_callback(
+                "fullscreenchange",
+                fullscreen_change.as_ref().unchecked_ref()
+            ) {
+                log::warn!("Failed to add fullscreenchange listener: {:?}", e);
+            } else {
+                fullscreen_change.forget(); // Keep the listener alive
+            }
+            
             let mut options = eframe::WebOptions::default();
             if query().contains("webgl")
                 && let eframe::egui_wgpu::WgpuSetup::CreateNew(create) = &mut options.wgpu_options.wgpu_setup

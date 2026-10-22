@@ -39,6 +39,7 @@ pub const UI_COMMANDS: &[(&str, &str, &[&str], Option<&str>)] = &[
     ("ui.toggle.cmdline", "Command Line", &["Window", "Command Line"], Some("Cmd+9")),
     ("ui.toggle.viewcube", "ViewCube", &["View", "ViewCube", "On"], None),
     ("ui.toggle.ucsicon", "UCS Icon", &["View", "UCS Icon", "On"], None),
+    ("ui.fullscreen", "Fullscreen", &["View", "Fullscreen"], Some("F11")),
     ("ui.theme.system", "Use System Setting", &["View", "Interface Theme", "Use System Setting"], None),
     ("ui.theme.light", "Light", &["View", "Interface Theme", "Light"], None),
     ("ui.theme.dark", "Dark", &["View", "Interface Theme", "Dark"], None),
@@ -241,6 +242,10 @@ fn run_ui_command_inner(app: &mut CadApp, id: &str, params: &Value) -> Option<Re
         "ui.toggle.ucsicon" => {
             toggle(&mut app.ui.show_ucs_icon, params);
             Ok(Value::Null)
+        }
+        "ui.fullscreen" => {
+            // Fullscreen is handled by the engine command, not here
+            app.run("fullscreen", params.clone())
         }
         "ui.toggle.menubar" => {
             toggle(&mut app.ui.in_window_menu, params);

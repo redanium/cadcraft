@@ -101,6 +101,11 @@ pub fn specs() -> Vec<CommandSpec> {
         })
         .noundo(),
         CommandSpec::new("layout.set", "Switch Layout", run_layout_set).params("{name: \"Model\" | layout name}").noundo(),
+        CommandSpec::new("fullscreen", "Fullscreen", run_fullscreen)
+            .menu(&["View", "Fullscreen"])
+            .params("{toggle?: bool} | {enter?: bool} | {exit?: bool}")
+            .enabled(always)
+            .noundo(),
     ];
     v.extend(named_views::specs());
     v.extend(vports::specs());
@@ -297,6 +302,26 @@ fn run_layout_set(s: &mut Session, p: &Value) -> Result<Value> {
     }
     s.touch();
     ok()
+}
+
+/// FULLSCREEN: request fullscreen mode for the canvas (web only).
+/// This sends a control message that the web UI layer intercepts.
+fn run_fullscreen(_s: &mut Session, p: &Value) -> Result<Value> {
+    let action = if bool_or(p, "exit", false) {
+        "exit"
+    } else if bool_or(p, "enter", false) {
+        "enter"
+    } else if bool_or(p, "toggle", false) {
+        "toggle"
+    } else {
+        "toggle"
+    };
+
+    // Return a control message that the web UI can intercept
+    Ok(json!({
+        "control": "fullscreen",
+        "action": action
+    }))
 }
 
 #[derive(Default)]

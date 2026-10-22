@@ -328,6 +328,17 @@ impl CadApp {
         if let Err(e) = &r {
             self.session.echo(e.clone());
         }
+        
+        // Intercept fullscreen control message for web builds
+        #[cfg(target_arch = "wasm32")]
+        if let Ok(v) = &r {
+            if let Some(control) = v.get("control").and_then(Value::as_str) {
+                if control == "fullscreen" {
+                    return handle_fullscreen(v);
+                }
+            }
+        }
+        
         r
     }
 
@@ -757,6 +768,45 @@ pub fn now_ms() -> f64 {
 /// A LISP source file, by its name.
 fn is_lisp_file(name: &str) -> bool {
     std::path::Path::new(name).extension().is_some_and(|e| e.eq_ignore_ascii_case("lsp"))
+}
+
+/// Handle fullscreen control message (web-only).
+#[cfg(target_arch = "wasm32")]
+fn handle_fullscreen(v: &Value) -> Result<Value, String> {
+    use wasm_bindgen::JsCast as _;
+    
+    let action = v.get("action").and_then(Value::as_str).unwrap_or("toggle");
+    
+    if let Some(window) = web_sys::window() {
+        if let Ok(document) = window.document() {
+            if let Some(canvas) = document.get_element_by_id("cadcraft_canvas") {
+                let result = match action {
+                    "enter" | "toggle" => {
+                        // Try to enter fullscreen
+                        canvas.request_fullscreen().map(|_| true)
+                    }
+                    "exit" => {
+                        // Try to exit fullscreen
+                        document.exit_fullscreen().map(|_| false)
+                    }
+                    _ => Ok(false),
+                };
+
+                if let Ok(was_entered) = result {
+                    return Ok(json!({
+                        "fullscreen": was_entered,
+                        "message": if was_entered { "Entered fullscreen mode." } else { "Exited fullscreen mode." }
+                    }));
+                }
+            }
+        }
+    }
+    
+    // Fallback if fullscreen API is not available
+    Ok(json!({
+        "fullscreen": false,
+        "message": "Fullscreen is not available in this environment."
+    }))
 }
 
 #[cfg(test)]
