@@ -3,7 +3,7 @@
 //! DWG files are read with the `acadrust` crate (MPL-2.0, used unmodified as a dependency) and
 //! converted to DXF bytes, which CADCraft's own DXF reader maps to its document model; saving
 //! goes the other way. Keeping the dependency behind this byte-level API isolates it: nothing
-//! else in CADCraft depends on its types. Native targets only (it memory-maps files).
+//! else in CADCraft depends on its types. Works on all platforms including WebAssembly.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 #![forbid(unsafe_code)]
 
@@ -45,8 +45,8 @@ fn mb(n: u64) -> String {
     if m >= 100.0 { format!("{m:.0} MB") } else { format!("{m:.1} MB") }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-mod native {
+// DWG support works on all platforms via the forked acadrust with WASM support
+mod impl_ {
     use std::io::{Cursor, Write};
     use std::panic::AssertUnwindSafe;
 
@@ -554,35 +554,14 @@ mod native {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-pub use native::{dwg_to_dxf, dwg_to_dxf_noted, dwg_to_dxf_with, dxf_to_dwg, dxf_to_dwg_as};
+// Re-export for all platforms (native and WASM)
+pub use impl_::{dwg_to_dxf, dwg_to_dxf_noted, dwg_to_dxf_with, dxf_to_dwg, dxf_to_dwg_as};
 
 /// The error for a DWG version CADCraft can't write.
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 fn unsupported(version: &str) -> String {
     let list: Vec<&str> = VERSIONS.iter().map(|(_, year)| *year).collect();
     format!("DWG version `{version}` can't be written (CADCraft writes {})", list.join(", "))
-}
-
-#[cfg(target_arch = "wasm32")]
-pub fn dwg_to_dxf(_bytes: &[u8]) -> Result<Vec<u8>, String> {
-    Err("DWG files can't be opened in the web build yet; save as DXF".into())
-}
-#[cfg(target_arch = "wasm32")]
-pub fn dwg_to_dxf_noted(_bytes: &[u8], _limits: Limits) -> Result<(Vec<u8>, Vec<String>), String> {
-    Err("DWG files can't be opened in the web build yet; save as DXF".into())
-}
-#[cfg(target_arch = "wasm32")]
-pub fn dwg_to_dxf_with(_bytes: &[u8], _limits: Limits) -> Result<Vec<u8>, String> {
-    Err("DWG files can't be opened in the web build yet; save as DXF".into())
-}
-#[cfg(target_arch = "wasm32")]
-pub fn dxf_to_dwg(_dxf: &[u8]) -> Result<Vec<u8>, String> {
-    Err("DWG files can't be written in the web build yet; save as DXF".into())
-}
-#[cfg(target_arch = "wasm32")]
-pub fn dxf_to_dwg_as(_dxf: &[u8], _version: &str) -> Result<Vec<u8>, String> {
-    Err("DWG files can't be written in the web build yet; save as DXF".into())
 }
 
 #[cfg(test)]

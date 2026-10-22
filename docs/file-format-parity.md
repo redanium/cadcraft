@@ -49,6 +49,7 @@ title/header suppression.
 | 2013–2017 | AC1027 | read, write | via bridge | yes | `dwg_at_every_version_reads_back` |
 | 2018–2027 | AC1032 | read, write (default) | via bridge; untested on real files | yes (default for new drawings) | `dwg_at_every_version_reads_back` (synthetic only) |
 | Web build | — | — | **no** (error: "save as DXF") | no | — |
+| Web build | — | — | yes (via forked acadrust) | yes (via forked acadrust) | `dwg_at_every_version_reads_back` |
 
 Everything lost in the DXF read/write paths below is also lost through DWG, plus whatever
 `acadrust`'s own DXF output omits (proxy objects, ACIS data, custom objects: not measured). User
@@ -148,6 +149,7 @@ our output in AutoCAD black-box.
 | 2026-10-12 | minor | Dynamic block references: definition, values and custom properties read (`blocks.reference`, Properties ▸ Custom) |
 | 2026-10-12 | minor | Dynamic block data row: parameters and actions read into a model (`blocks.dynamic`); kept by DXF and DWG save |
 | 2026-10-12 | minor | Multiline attributes (embedded MTEXT) read, drawn and written back instead of losing their text |
+| 2026-10-22 | major | DWG read/write enabled on web via forked acadrust (redanium/acadrust with WASM support) |
 | 2026-10-11 | minor | Rows refreshed for merged work: code pages and `\M+` (#505), MULTILEADER (#459), IMAGE, MLINE/HELIX/REGION/TOLERANCE, VPORT/VIEW/UCS tables, modelled and raw objects, foreign data (#528), DWT templates and user `.lin`/`.pat`/`.pgp` files (#552), PDF output (#567, #571), plotter devices (#564), data extraction (#433, #534); weighted percentages not re-measured |
 | 2026-10-11 | minor | DXF (ASCII and binary) and DWG saved at 2000–2018, 2018 by default (#421) |
 | 2026-10-10 | minor | WIPEOUT and gradients written since #147/#162; other save losses remain (#201, #204, #208, #209, #213, #223) |

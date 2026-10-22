@@ -92,6 +92,9 @@
 - **Open files.** DXF is read and written natively (ASCII and binary, R12 through 2018), and DWG
   files (R13 through 2018) open and save through the open-source acadrust library. Export to SVG
   and PNG today.
+**Open files.** DXF is read and written natively (ASCII and binary, R12 through 2018), and DWG
+files (R13 through 2018) open and save through the open-source acadrust library. Export to SVG
+and PNG today. DWG opens and saves on the web too.
 - **Fast and native.** Pure Rust and egui, no Electron, no web view. One binary on macOS
   (universal), Windows, Linux and FreeBSD, plus a WebAssembly build for the browser.
 - **Built for agents.** Every menu item, tool and prompt is a command. Agents can type at the
