@@ -69,6 +69,12 @@ pub fn arc_segments(radius: f64, sweep: f64, tol: f64) -> usize {
     if !(r.is_finite() && sweep.is_finite()) || r <= EPS {
         return 1;
     }
+    // For very small sweeps (tiny arcs like revcloud bulges), a single chord is sufficient
+    // for hit testing. This prevents exponential blowup when many small arcs are tessellated
+    // with a small tolerance (e.g., revclouds with hundreds of vertices).
+    if sweep.abs() < 1e-6 {
+        return 1;
+    }
     let tol = tol.max(r * 1e-6).min(r);
     // chord error e = r(1 - cos(θ/2)) → θ = 2 acos(1 - e/r)
     let step = 2.0 * (1.0 - tol / r).clamp(-1.0, 1.0).acos();

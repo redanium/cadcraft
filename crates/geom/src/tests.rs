@@ -206,6 +206,17 @@ fn arc_segments_bounded() {
 }
 
 #[test]
+fn arc_segments_small_sweep_returns_one() {
+    // Test for revcloud fix: very small sweeps should return 1 segment
+    assert_eq!(arc_segments(1.0, 1e-7, 0.001), 1);
+    assert_eq!(arc_segments(1.0, -1e-7, 0.001), 1);
+    assert_eq!(arc_segments(0.5, 5e-7, 0.0001), 1);
+    // Larger sweeps should still work normally
+    assert!(arc_segments(1.0, 0.1, 0.001) > 1);
+    assert!(arc_segments(1.0, TAU, 0.001) > 10);
+}
+
+#[test]
 fn ocs_identity_for_z() {
     assert_eq!(Mat4::ocs(Vec3::Z), Mat4::IDENTITY);
     let m = Mat4::ocs(Vec3::new(0.0, 0.0, -1.0));
