@@ -358,47 +358,68 @@ pub fn handle(app: &mut CadApp, ctx: &egui::Context, req: &ControlRequest) -> Ou
             // Fullscreen is only available on web
             #[cfg(target_arch = "wasm32")]
             {
-                use wasm_bindgen::JsCast as _;
+                use wasm_bindgen::prelude::*;
                 
                 let action = p.get("action").and_then(Value::as_str).unwrap_or("toggle");
                 
-                if let Some(window) = web_sys::window() {
+                // Use a closure to avoid blocking the UI thread
+                let result = if let Some(window) = web_sys::window() {
                     if let Some(document) = window.document() {
                         if let Some(canvas) = document.get_element_by_id("cadcraft_canvas") {
-                            let canvas = canvas.dyn_into::<web_sys::HtmlCanvasElement>().ok();
-                            if let Some(canvas) = canvas {
-                                let result = match action {
+                            if let Ok(canvas) = canvas.dyn_into::<web_sys::HtmlCanvasElement>() {
+                                match action {
                                     "enter" | "toggle" => {
-                                        canvas.request_fullscreen()
-                                            .map(|_| true)
+                                        // Check if already fullscreen
+                                        if document.fullscreen_element().is_some() {
+                                            document.exit_fullscreen();
+                                            Ok(false)
+                                        } else {
+                                            canvas.request_fullscreen().map(|_| true)
+                                        }
                                     }
                                     "exit" => {
-                                        document.exit_fullscreen();
+                                        if document.fullscreen_element().is_some() {
+                                            document.exit_fullscreen();
+                                        }
                                         Ok(false)
                                     }
                                     _ => Ok(false),
-                                };
-
-                                if let Ok(was_entered) = result {
-                                    return ok(json!({
-                                        "fullscreen": was_entered,
-                                        "message": if was_entered { "Entered fullscreen mode." } else { "Exited fullscreen mode." }
-                                    }));
                                 }
+                            } else {
+                                Err("Canvas is not a valid HTML canvas element".into())
                             }
+                        } else {
+                            Err("Canvas element not found".into())
                         }
+                    } else {
+                        Err("No document available".into())
+                    }
+                } else {
+                    Err("No window available".into())
+                };
+
+                match result {
+                    Ok(was_entered) => ok(json!({
+                        "fullscreen": was_entered,
+                        "message": if was_entered { 
+                            "Entered fullscreen mode. Press Escape to exit." 
+                        } else { 
+                            "Exited fullscreen mode." 
+                        }
+                    })),
+                    Err(e) => {
+                        log::error!("Fullscreen error: {:?}", e);
+                        ok(json!({
+                            "fullscreen": false,
+                            "message": format!("Fullscreen failed: {:?}", e)
+                        }))
                     }
                 }
-                
-                return ok(json!({
-                    "fullscreen": false,
-                    "message": "Fullscreen is not available in this environment."
-                }));
             }
             
             #[cfg(not(target_arch = "wasm32"))]
             {
-                return err("Fullscreen is only available in the web version.");
+                err("Fullscreen is only available in the web version.")
             }
         }
         "ui.menu.list" => ok(Value::Array(

@@ -121,6 +121,43 @@ mod web {
                 fullscreen_change.forget(); // Keep the listener alive
             }
             
+            // Set up Ctrl+Shift+F keyboard shortcut for fullscreen
+            let fullscreen_keydown = wasm_bindgen::closure::Closure::wrap(Box::new(move |event: web_sys::KeyboardEvent| {
+                // Check for Ctrl+Shift+F
+                if event.key() == "f" || event.key() == "F" {
+                    if event.ctrl_key() && event.shift_key() {
+                        event.prevent_default();
+                        event.stop_propagation();
+                        log::debug!("Ctrl+Shift+F pressed, triggering fullscreen");
+                        
+                        // Trigger fullscreen directly
+                        if let Some(window) = web_sys::window() {
+                            if let Some(document) = window.document() {
+                                if let Some(canvas) = document.get_element_by_id("cadcraft_canvas") {
+                                    if let Ok(canvas) = canvas.dyn_into::<web_sys::HtmlCanvasElement>() {
+                                        // Check if already fullscreen
+                                        if document.fullscreen_element().is_some() {
+                                            let _ = document.exit_fullscreen();
+                                        } else {
+                                            let _ = canvas.request_fullscreen();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }) as Box<dyn FnMut(web_sys::KeyboardEvent)>);
+            
+            if let Err(e) = canvas.add_event_listener_with_callback(
+                "keydown",
+                fullscreen_keydown.as_ref().unchecked_ref()
+            ) {
+                log::warn!("Failed to add keydown listener: {:?}", e);
+            } else {
+                fullscreen_keydown.forget(); // Keep the listener alive
+            }
+            
             let mut options = eframe::WebOptions::default();
             if query().contains("webgl")
                 && let eframe::egui_wgpu::WgpuSetup::CreateNew(create) = &mut options.wgpu_options.wgpu_setup

@@ -39,7 +39,7 @@ pub const UI_COMMANDS: &[(&str, &str, &[&str], Option<&str>)] = &[
     ("ui.toggle.cmdline", "Command Line", &["Window", "Command Line"], Some("Cmd+9")),
     ("ui.toggle.viewcube", "ViewCube", &["View", "ViewCube", "On"], None),
     ("ui.toggle.ucsicon", "UCS Icon", &["View", "UCS Icon", "On"], None),
-    ("ui.fullscreen", "Fullscreen", &["View", "Fullscreen"], Some("F11")),
+    ("ui.fullscreen", "Fullscreen", &["View", "Fullscreen"], Some("Ctrl+Shift+F")),
     ("ui.theme.system", "Use System Setting", &["View", "Interface Theme", "Use System Setting"], None),
     ("ui.theme.light", "Light", &["View", "Interface Theme", "Light"], None),
     ("ui.theme.dark", "Dark", &["View", "Interface Theme", "Dark"], None),
@@ -244,8 +244,64 @@ fn run_ui_command_inner(app: &mut CadApp, id: &str, params: &Value) -> Option<Re
             Ok(Value::Null)
         }
         "ui.fullscreen" => {
-            // Delegate to the control channel which handles it platform-specifically
-            app.run("ui.fullscreen", params.clone())
+            // Fullscreen requires direct Browser API call from user gesture context
+            #[cfg(target_arch = "wasm32")]
+            {
+                use wasm_bindgen::prelude::*;
+                use std::rc::Rc;
+                
+                log::debug!("Fullscreen menu clicked - deferring fullscreen call");
+                
+                // Wrap in Rc to share between closure and timeout
+                let window = web_sys::window();
+                let document: Rc<Option<web_sys::Document>> = Rc::new(window.as_ref().and_then(|w| w.document()));
+                let canvas: Rc<Option<web_sys::HtmlCanvasElement>> = Rc::new(
+                    document.as_ref().as_ref()
+                        .and_then(|d| d.get_element_by_id("cadcraft_canvas"))
+                        .and_then(|e| e.dyn_into::<web_sys::HtmlCanvasElement>().ok())
+                );
+                
+                // Use set_timeout to ensure we're in a proper gesture context
+                if let Some(window) = window {
+                    let doc_clone = document.clone();
+                    let canvas_clone = canvas.clone();
+                    
+                    let closure: wasm_bindgen::closure::Closure<dyn FnMut()> = Closure::new(move || {
+                        log::debug!("Timeout callback: attempting fullscreen");
+                        
+                        // Check fullscreen state and toggle
+                        if let Some(document) = doc_clone.as_ref() {
+                            if let Some(canvas) = canvas_clone.as_ref() {
+                                if document.fullscreen_element().is_some() {
+                                    log::debug!("Exiting fullscreen");
+                                    let _ = document.exit_fullscreen();
+                                } else {
+                                    log::debug!("Entering fullscreen");
+                                    let _ = canvas.request_fullscreen();
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Call after 0ms (next tick)
+                    let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(
+                        closure.as_ref().unchecked_ref(),
+                        0
+                    );
+                    closure.forget();
+                }
+                
+                // Return immediately - the actual fullscreen happens asynchronously
+                return Some(Ok(json!({
+                    "fullscreen": false,
+                    "message": "Fullscreen request queued..."
+                })));
+            }
+            
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                return Some(Err("Fullscreen is only available in the web version.".into()));
+            }
         }
         "ui.toggle.menubar" => {
             toggle(&mut app.ui.in_window_menu, params);
