@@ -9,6 +9,8 @@ use cadcraft_geom::{Bounds2, Vec2};
 use serde_json::{Value, json};
 
 use super::file::{base64_encode, io};
+#[cfg(target_arch = "wasm32")]
+use super::file::deliver;
 use super::*;
 use crate::{Accept, Input, Interactive, Prompt, Result, Session, Step};
 use viewports::MviewM;
@@ -768,6 +770,17 @@ fn plot_sheets(cmd: &str, d: &cadcraft_doc::Drawing, v: &Value) -> Result<Vec<St
 /// "Model"] | "all"` (several sheets in one PDF, one page each, labelled with the layout names),
 /// `layers?: bool` (drawing layers as PDF layers, default on), `offLayers?: bool` (layers that
 /// are off on hidden PDF layers), `links?: [{handle, url}]` (hyperlinks) and `title?`.
+/// The MIME type of a plot output, so the browser downloads it as the right kind of file.
+#[allow(dead_code)] // only used on wasm32, where the browser owns the download
+fn plot_mime(output: &str) -> &'static str {
+    match output {
+        "pdf" => "application/pdf",
+        "svg" => "svg+xml",
+        "png" => "image/png",
+        _ => "application/octet-stream",
+    }
+}
+
 fn run_plot(s: &mut Session, p: &Value, cmd: &str) -> Result<Value> {
     let hook = io().and_then(|h| h.plot).ok_or_else(|| bad(cmd, "plotting is not available in this build"))?;
     // Checked here for a clear error; the plotter resolves the names the same way.
@@ -832,7 +845,13 @@ fn run_plot(s: &mut Session, p: &Value, cmd: &str) -> Result<Value> {
                 Ok(json!({ "path": path, "bytes": bytes.len(), "layout": layout, "pages": pages }))
             }
             #[cfg(target_arch = "wasm32")]
-            Err(bad(cmd, "paths are not available on the web; omit `path` to get the PDF as base64 `data`"))
+            {
+                let name = std::path::Path::new(_path).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| _path.to_string());
+                let mime = plot_mime(std::path::Path::new(_path).extension().map(|e| e.to_string_lossy().to_ascii_lowercase()).unwrap_or_default().as_str());
+                let deliver = deliver().ok_or_else(|| bad(cmd, "files can't be written in this build; use the returned base64 `data`"))?;
+                deliver(&name, mime, &bytes).map_err(|e| bad(cmd, format!("{name}: {e}")))?;
+                Ok(json!({ "path": _path, "bytes": bytes.len(), "layout": layout, "pages": pages }))
+            }
         }
         None => Ok(json!({ "data": base64_encode(&bytes), "bytes": bytes.len(), "layout": layout, "pages": pages })),
     }
@@ -885,6 +904,14 @@ mod tests {
         s.cmdline("").unwrap();
         s.cmdline("circle 50,25 20").unwrap();
         s
+    }
+
+    #[test]
+    fn plot_mime_picks_the_browser_type() {
+        assert_eq!(plot_mime("pdf"), "application/pdf");
+        assert_eq!(plot_mime("svg"), "svg+xml");
+        assert_eq!(plot_mime("png"), "image/png");
+        assert_eq!(plot_mime("gif"), "application/octet-stream");
     }
 
     fn viewports(s: &Session, layout: &str) -> Vec<(Handle, Viewport)> {

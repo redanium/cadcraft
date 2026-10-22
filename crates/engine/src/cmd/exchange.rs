@@ -18,6 +18,8 @@ use cadcraft_render::raster::{RasterOptions, View};
 use serde_json::{Value, json};
 
 use super::file::{base64_decode, base64_encode, io};
+#[cfg(target_arch = "wasm32")]
+use super::file::deliver;
 use super::*;
 use crate::{EngineError, Result, Session};
 
@@ -75,6 +77,18 @@ fn extension(path: &str) -> String {
     std::path::Path::new(path).extension().map(|e| e.to_string_lossy().to_ascii_lowercase()).unwrap_or_default()
 }
 
+/// The MIME type of an export format, so the browser downloads it as the right kind of file.
+#[allow(dead_code)] // only used on wasm32, where the browser owns the download
+fn export_mime(format: &str) -> &'static str {
+    match format {
+        "pdf" => "application/pdf",
+        "svg" => "svg+xml",
+        "png" => "image/png",
+        "dxf" | "dwg" => "application/octet-stream",
+        _ => "application/octet-stream",
+    }
+}
+
 /// Write `bytes` to `path` through a temporary file, so a failed write keeps the old file.
 fn write_file(cmd: &str, path: &str, bytes: &[u8]) -> Result<()> {
     #[cfg(not(target_arch = "wasm32"))]
@@ -86,8 +100,10 @@ fn write_file(cmd: &str, path: &str, bytes: &[u8]) -> Result<()> {
     }
     #[cfg(target_arch = "wasm32")]
     {
-        let _ = (path, bytes);
-        Err(bad(cmd, "paths are not available on the web; omit `path` to get the file as base64 `data`"))
+        let name = std::path::Path::new(path).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| path.to_string());
+        let mime = export_mime(std::path::Path::new(path).extension().map(|e| e.to_string_lossy().to_ascii_lowercase()).unwrap_or_default().as_str());
+        let deliver = deliver().ok_or_else(|| bad(cmd, "files can't be written in this build; use the returned base64 `data`"))?;
+        deliver(&name, mime, bytes).map_err(|e| bad(cmd, format!("{name}: {e}")))
     }
 }
 
@@ -572,6 +588,16 @@ mod tests {
 
     fn temp(name: &str) -> std::path::PathBuf {
         std::env::temp_dir().join(format!("cadcraft-exchange-{}-{name}", std::process::id()))
+    }
+
+    #[test]
+    fn export_mime_picks_the_browser_type() {
+        assert_eq!(export_mime("pdf"), "application/pdf");
+        assert_eq!(export_mime("svg"), "svg+xml");
+        assert_eq!(export_mime("png"), "image/png");
+        assert_eq!(export_mime("dxf"), "application/octet-stream");
+        assert_eq!(export_mime("dwg"), "application/octet-stream");
+        assert_eq!(export_mime("txt"), "application/octet-stream");
     }
 
     #[test]
