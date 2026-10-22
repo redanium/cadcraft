@@ -27,6 +27,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "acadrust"
+version = "0.6.6"
+source = "git+https://github.com/redanium/acadrust#ae9790b84158c3238b92e3519a3191fc6b9c15be"
+dependencies = [
+ "anyhow",
+ "bitflags 2.13.2",
+ "byteorder",
+ "encoding_rs",
+ "flate2",
+ "foldhash",
+ "indexmap",
+ "itoa",
+ "memmap2",
+ "nom",
+ "oem_cp",
+ "once_cell",
+ "rayon",
+ "ryu",
+ "thiserror 2.0.21",
+ "web-time",
+]
+
+[[package]]
 name = "accesskit"
 version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -610,7 +633,7 @@ dependencies = [
 name = "cadcraft-dwg"
 version = "0.10.0"
 dependencies = [
- "acadrust",
+ "acadrust 0.6.6",
 ]
 
 [[package]]
@@ -663,7 +686,7 @@ dependencies = [
 name = "cadcraft-io"
 version = "0.10.0"
 dependencies = [
- "acadrust",
+ "acadrust 0.6.4",
  "cadcraft-color",
  "cadcraft-doc",
  "cadcraft-dwg",
