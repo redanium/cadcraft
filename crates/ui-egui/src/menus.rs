@@ -223,6 +223,11 @@ fn run_ui_command_inner(app: &mut CadApp, id: &str, params: &Value) -> Option<Re
         "export" | "exp" | "import" | "imp" | "publish" | "preview" | "pre" if params.is_null() && app.session.state().is_ok() => {
             return Some(crate::exchange::route(app, id));
         }
+        "share" if params.is_null() && app.session.state().is_ok() => {
+            // Open share dialog with export options
+            app.ui.dialog = Some("share".to_string());
+            return Some(Ok(Value::Null));
+        }
         "ui.toggle.statusbar" => {
             toggle(&mut app.ui.show_status_bar, params);
             Ok(Value::Null)

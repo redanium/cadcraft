@@ -25,6 +25,7 @@ pub fn show(app: &mut CadApp, ctx: &egui::Context) {
         "aliasedit" => crate::aliasdlg::dialog(app, ctx, &mut open),
         "about" => about(ctx, &mut open),
         "preview" => crate::exchange::dialog(app, ctx, &mut open),
+        "share" => share_dialog(app, ctx, &mut open),
         "commands" => commands(app, ctx, &mut open),
         "blocks" => blocks(app, ctx, &mut open),
         "bedit" => crate::bedit::dialog(app, ctx, &mut open),
@@ -422,6 +423,105 @@ fn language(app: &mut CadApp, ctx: &egui::Context, open: &mut bool) {
             }
         });
     });
+}
+
+/// Share dialog: offers export formats for sharing the drawing.
+fn share_dialog(app: &mut CadApp, ctx: &egui::Context, open: &mut bool) {
+    use egui::{Align, Layout};
+    
+    let formats = [
+        ("DXF", "Drawing Exchange Format (editable)"),
+        ("DWG", "AutoCAD native format (editable)"),
+        ("SVG", "Scalable Vector Graphics (web-friendly)"),
+        ("PNG", "Raster image (view-only)"),
+        ("PDF", "Portable Document Format (print-ready)"),
+    ];
+
+    let window = egui::Window::new(crate::tl!("Share"))
+        .id(egui::Id::new("Share"))
+        .open(open)
+        .resizable(false)
+        .min_width(400.0);
+    
+    let window_response = window.show(ctx, |ui| {
+        ui.heading(crate::tl!("Share Drawing"));
+        ui.add_space(8.0);
+        ui.label(crate::tl!("Choose a format to export and share your drawing:"));
+        ui.add_space(12.0);
+
+        let mut selected_format = None;
+        let mut close_requested = false;
+
+        for (format, description) in formats {
+            ui.horizontal(|ui| {
+                if ui.button(format!("📄 {}", format)).clicked() {
+                    selected_format = Some((format.to_string(), format.to_ascii_lowercase()));
+                }
+                ui.add_space(12.0);
+                ui.label(description);
+            });
+            ui.add_space(8.0);
+        }
+
+        ui.add_space(16.0);
+        ui.separator();
+        ui.add_space(8.0);
+
+        // Info text
+        ui.horizontal(|ui| {
+            ui.label("ℹ️ ");
+            ui.small(crate::tl!("Exported files can be shared via email, cloud storage, or any file transfer method."));
+        });
+
+        ui.add_space(16.0);
+        
+        // Close button
+        if ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+            ui.button(crate::tl!("Close"))
+        }).inner.clicked() {
+            close_requested = true;
+        }
+
+        (selected_format, close_requested)
+    });
+
+    // Handle actions after the UI is built (outside the borrow)
+    if let Some(inner_response) = window_response {
+        if let Some((selected_format, close_requested)) = inner_response.inner {
+            if close_requested {
+                *open = false;
+            }
+            
+            if let Some((format, format_lower)) = selected_format {
+                let stem = app.session.state()
+                    .map(|s| s.title.clone())
+                    .ok()
+                    .and_then(|t| std::path::Path::new(&t).file_stem().map(|s| s.to_string_lossy().to_string()))
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or_else(|| "Drawing".to_string());
+                
+                let extension = match format.as_str() {
+                    "DXF" => "dxf",
+                    "DWG" => "dwg",
+                    "SVG" => "svg",
+                    "PNG" => "png",
+                    "PDF" => "pdf",
+                    _ => "dxf",
+                };
+                
+                let filename = format!("{}.{}", stem, extension);
+                if let Some(pick) = app.services.pick_save.as_ref() {
+                    if let Some(path) = pick(&filename) {
+                        let _ = app.session.execute("export", &json!({
+                            "path": path,
+                            "format": format_lower
+                        }));
+                        *open = false;
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
