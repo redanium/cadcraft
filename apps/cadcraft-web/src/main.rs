@@ -90,7 +90,7 @@ mod web {
         // `?host=parent`: a same-origin page framing CADCraft (such as a Nextcloud app) opens
         // drawings in it and stores what it saves. Otherwise there is no file system here: saved
         // files reach the user as browser downloads.
-        let bridge = if query_param("host").as_deref() == Some("parent") { crate::host::Bridge::new() } else { None };
+        let bridge = crate::host::Bridge::new();
         match &bridge {
             Some(bridge) => {
                 bridge.install();

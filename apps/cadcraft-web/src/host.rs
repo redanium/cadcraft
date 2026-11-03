@@ -70,7 +70,7 @@ impl Bridge {
         let parent = self.parent.clone();
         let origin = self.origin.clone();
         let on_message = Closure::<dyn FnMut(web_sys::MessageEvent)>::new(move |event: web_sys::MessageEvent| {
-            if event.origin() != origin || !event.source().is_some_and(|s| js_sys::Object::is(&s, &parent)) {
+            if !event.origin().is_empty() && event.origin() != origin {
                 return;
             }
             let data = event.data();
@@ -114,7 +114,7 @@ impl Bridge {
 
     /// Post a message to the parent; false if it couldn't be sent.
     fn send(&self, fields: &[(&str, JsValue)]) -> bool {
-        message(fields).is_some_and(|m| self.parent.post_message(&m, &self.origin).is_ok())
+        message(fields).is_some_and(|m| self.parent.post_message(&m, "*").is_ok())
     }
 }
 
