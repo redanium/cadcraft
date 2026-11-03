@@ -94,7 +94,7 @@ mod web {
         match &bridge {
             Some(bridge) => {
                 bridge.install();
-                cadcraft_engine::cmd::file::set_deliver(crate::host::deliver);
+                cadcraft_engine::cmd::file::set_deliver(crate::download::download);
             }
             None => cadcraft_engine::cmd::file::set_deliver(crate::download::download),
         }
